@@ -1,0 +1,237 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Amazon Transcribe Post Call Analytics - PCA UI
+Parameters:
+  AdminUsername:
+    Type: String
+    Default: admin
+    Description: (Required) Username for admin user
+  AdminEmail:
+    Type: String
+    Description: (Required) Email address for the admin user. Will be used for logging
+      in and for setting the admin password.  This email will receive the temporary
+      password for the admin user.
+    AllowedPattern: .+\@.+\..+
+    ConstraintDescription: Must be valid email address eg. johndoe@example.com
+  AudioBucket:
+    Type: String
+    Default: InputBucketName
+    Description: S3 bucket containing audio files. Audio object names must be prefixed
+      with nci/
+  DataBucket:
+    Type: String
+    Default: OutputBucketName
+    Description: S3 bucket containing Transcribe output. JSON object names must be
+      prefixed with parseFiles/
+  DataPrefix:
+    Type: String
+    Default: OutputBucketParsedResults
+    Description: Prefix that parsed transcription output is stored under in DataBucket
+  MainStackName:
+    Type: String
+    Default: ''
+  Environment:
+    Type: String
+  GenAIQueryType:
+    Default: DISABLED
+    Type: String
+    AllowedValues:
+    - DISABLED
+    - BEDROCK
+    - LAMBDA
+    - ANTHROPIC
+    Description: This is what model to use for GenAIQuery.
+  GenAIQueryBedrockModelId:
+    Type: String
+    Default: anthropic.claude-v2
+    AllowedValues:
+    - amazon.titan-tg1-large
+    - anthropic.claude-v1
+    - anthropic.claude-instant-v1
+    - anthropic.claude-v2
+    Description: (Optional) If 'GenAIQuery' is BEDROCK, which Bedrock model to use.
+      (Bedrock preview access only)
+  LLMThirdPartyApiKey:
+    Type: String
+    Description: "Secrets manager secret Arn containing the third party LLM API key\n"
+    Default: ''
+  FetchTranscriptArn:
+    Type: String
+    AllowedPattern: ^(|arn:aws:lambda:.*)$
+    Description: Arn to use for the GenAIQuery to fetch transcript
+  Boto3LayerArn:
+    Default: ''
+    Type: String
+    Description: External Boto3 Layer Arn to use. If none is provided, one will be
+      created automatically via boto3.template
+  PyUtilsLayerArn:
+    Default: ''
+    Type: String
+    Description: External PyUtils Layer Arn to use.
+Conditions:
+  isMainStackNameEmpty:
+    Fn::Equals:
+    - Ref: MainStackName
+    - ''
+  ShouldEnableGenAIQuery:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: GenAIQueryType
+      - DISABLED
+  HasAnthropicQuery:
+    Fn::Equals:
+    - Ref: GenAIQueryType
+    - ANTHROPIC
+Resources:
+  DeployCount:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: '0'
+  Web:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.us-east-1.amazonaws.com/win-analytics/a34dc9715490ec7fc9a92093e38c51e0.template
+      TimeoutInMinutes: 20
+      Parameters:
+        AudioBucket:
+          Ref: AudioBucket
+        DataBucket:
+          Ref: DataBucket
+  Cognito:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.us-east-1.amazonaws.com/win-analytics/a7c9f5b8e94871fc6231bb548f5331cc.template
+      Parameters:
+        AdminUsername:
+          Ref: AdminUsername
+        AdminEmail:
+          Ref: AdminEmail
+        WebUri:
+          Fn::GetAtt:
+          - Web
+          - Outputs.Uri
+        Environment:
+          Ref: Environment
+        Name:
+          Fn::If:
+          - isMainStackNameEmpty
+          - Ref: AWS::StackName
+          - Ref: MainStackName
+  Indexer:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.us-east-1.amazonaws.com/win-analytics/f515bd0bbcd780f0282f49da2dfd2b57.template
+      Parameters:
+        DataBucket:
+          Ref: DataBucket
+        DataPrefix:
+          Ref: DataPrefix
+  Api:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.us-east-1.amazonaws.com/win-analytics/ae9e2c4f1328a3ca7bdbab989a9b4f11.template
+      Parameters:
+        AudioBucket:
+          Ref: AudioBucket
+        DataBucket:
+          Ref: DataBucket
+        TableName:
+          Fn::GetAtt:
+          - Indexer
+          - Outputs.TableName
+        UserPoolId:
+          Fn::GetAtt:
+          - Cognito
+          - Outputs.UserPoolId
+        GenAIQueryType:
+          Ref: GenAIQueryType
+        GenAIQueryBedrockModelId:
+          Ref: GenAIQueryBedrockModelId
+        LLMThirdPartyApiKey:
+          Ref: LLMThirdPartyApiKey
+        FetchTranscriptArn:
+          Ref: FetchTranscriptArn
+        Boto3LayerArn:
+          Ref: Boto3LayerArn
+        PyUtilsLayerArn:
+          Ref: PyUtilsLayerArn
+  Deploy:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.us-east-1.amazonaws.com/win-analytics/98a6ce5fa129a88c2b0d96f8b812e300.template
+      Parameters:
+        Bucket:
+          Fn::GetAtt:
+          - Web
+          - Outputs.Bucket
+        AuthUri:
+          Fn::GetAtt:
+          - Cognito
+          - Outputs.BaseUri
+        AuthClientId:
+          Fn::GetAtt:
+          - Cognito
+          - Outputs.UserPoolClientId
+        ApiUri:
+          Fn::GetAtt:
+          - Api
+          - Outputs.Uri
+        DeployCountName:
+          Ref: DeployCount
+        DeployCountValue:
+          Ref: DeployCount
+        EnableGenAIQuery:
+          Fn::If:
+          - ShouldEnableGenAIQuery
+          - 'true'
+          - 'false'
+  WebUriParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: WebUiUri
+      Type: String
+      Value:
+        Fn::GetAtt:
+        - Web
+        - Outputs.Uri
+      Description: PCA Web Application URI
+Outputs:
+  DataBucket:
+    Value:
+      Ref: DataBucket
+  AudioBucket:
+    Value:
+      Ref: AudioBucket
+  WebBucket:
+    Value:
+      Fn::GetAtt:
+      - Web
+      - Outputs.Bucket
+  AuthUri:
+    Value:
+      Fn::GetAtt:
+      - Cognito
+      - Outputs.BaseUri
+  AuthClientId:
+    Value:
+      Fn::GetAtt:
+      - Cognito
+      - Outputs.UserPoolClientId
+  ApiUri:
+    Value:
+      Fn::GetAtt:
+      - Api
+      - Outputs.Uri
+  WebUri:
+    Value:
+      Fn::GetAtt:
+      - Web
+      - Outputs.Uri
+  RolesForKMSKey:
+    Value:
+      Fn::Join:
+      - ', '
+      - - Fn::Sub: ${Api.Outputs.RolesForKMSKey}
+        - Fn::Sub: ${Indexer.Outputs.RolesForKMSKey}
+        - Fn::Sub: ${Deploy.Outputs.RolesForKMSKey}
+        - Fn::Sub: ${Web.Outputs.RolesForKMSKey}

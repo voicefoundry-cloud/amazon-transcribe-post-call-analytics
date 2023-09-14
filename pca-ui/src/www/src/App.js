@@ -5,12 +5,23 @@ import {
   NavLink,
 } from "react-router-dom";
 // import { Navbar, Nav, Container, Alert, Button } from "react-bootstrap";
-import { AppLayout,Alert,Notifications, Header, Link, BreadcrumbGroup, TopNavigation, Container, Button} from "@cloudscape-design/components"
+import {
+  AppLayout,
+  Alert,
+  Notifications,
+  Header,
+  Link,
+  BreadcrumbGroup,
+  TopNavigation,
+  Container,
+  Button,
+} from "@cloudscape-design/components";
 import Home from "./routes/Home";
 import Search from "./routes/Search";
 import Dashboard from "./routes/Dashboard/index";
 import { useState } from "react";
 import { payloadFromToken, logOut } from "./api/auth";
+import logo from "./ttec-digital-logo-sm.png";
 
 const routes = [
   {
@@ -18,28 +29,32 @@ const routes = [
     name: "Search",
     Component: Search,
     Breadcrumb: () => {
-      return <BreadcrumbGroup
-        items={[
-          { text: "Home", href: "../" },
-          { text: "Search", href: "search" }
-        ]}
-        ariaLabel="Breadcrumbs"
-      />
-    }
+      return (
+        <BreadcrumbGroup
+          items={[
+            { text: "Home", href: "../" },
+            { text: "Search", href: "search" },
+          ]}
+          ariaLabel="Breadcrumbs"
+        />
+      );
+    },
   },
   {
     path: "/dashboard/parsedFiles/search",
     name: "Search",
     Component: Search,
     Breadcrumb: () => {
-      return <BreadcrumbGroup
-        items={[
-          { text: "Home", href: "../" },
-          { text: "Search", href: "search" }
-        ]}
-        ariaLabel="Breadcrumbs"
-      />
-    }
+      return (
+        <BreadcrumbGroup
+          items={[
+            { text: "Home", href: "../" },
+            { text: "Search", href: "search" },
+          ]}
+          ariaLabel="Breadcrumbs"
+        />
+      );
+    },
   },
   {
     path: "/dashboard/:key*",
@@ -47,29 +62,33 @@ const routes = [
     hide: true,
     Component: Dashboard,
     Breadcrumb: () => {
-      return <BreadcrumbGroup
-        items={[
-          { text: "Home", href: "../../" },
-          { text: "Call List", href: "../../" },
-          { text: "Call Details", href: "#" },
-        ]}
-        ariaLabel="Breadcrumbs"
-      />
-    }
+      return (
+        <BreadcrumbGroup
+          items={[
+            { text: "Home", href: "../../" },
+            { text: "Call List", href: "../../" },
+            { text: "Call Details", href: "#" },
+          ]}
+          ariaLabel="Breadcrumbs"
+        />
+      );
+    },
   },
   {
     path: "/",
     name: "Call List",
     Component: Home,
     Breadcrumb: () => {
-      return <BreadcrumbGroup
-        items={[
-          { text: "Home", href: "#" },
-          { text: "Call List", href: "#" },
-        ]}
-        ariaLabel="Breadcrumbs"
-      />
-    }
+      return (
+        <BreadcrumbGroup
+          items={[
+            { text: "Home", href: "#" },
+            { text: "Call List", href: "#" },
+          ]}
+          ariaLabel="Breadcrumbs"
+        />
+      );
+    },
   },
 ];
 
@@ -78,8 +97,11 @@ function Navigation({ userName, email }) {
     <TopNavigation
       identity={{
         href: "/",
-        title: "Amazon Transcribe Post-Call Analytics",
-        iconName: "settings"
+        title: "Post Call Analytics",
+        logo: {
+          src: logo,
+          alt: "TTEC Digital Post Call Analytics",
+        },
       }}
       i18nStrings={{
         searchIconAriaLabel: "Search",
@@ -87,7 +109,7 @@ function Navigation({ userName, email }) {
         overflowMenuTriggerText: "More",
         overflowMenuTitleText: "All",
         overflowMenuBackIconAriaLabel: "Back",
-        overflowMenuDismissIconAriaLabel: "Close menu"
+        overflowMenuDismissIconAriaLabel: "Close menu",
       }}
       utilities={[
         {
@@ -95,15 +117,15 @@ function Navigation({ userName, email }) {
           text: "Search",
           iconName: "search",
           href: "search",
-          externalIconAriaLabel: " (opens in a new tab)"
+          externalIconAriaLabel: " (opens in a new tab)",
         },
-        {
-          type: "button",
-          text: "PCA Blog Post",
-          href: "https://amazon.com/post-call-analytics",
-          external: true,
-          externalIconAriaLabel: " (opens in a new tab)"
-        },
+        // {
+        //   type: "button",
+        //   text: "PCA Blog Post",
+        //   href: "https://amazon.com/post-call-analytics",
+        //   external: true,
+        //   externalIconAriaLabel: " (opens in a new tab)",
+        // },
         {
           type: "menu-dropdown",
           text: userName,
@@ -126,23 +148,20 @@ function Navigation({ userName, email }) {
                   text: "GitHub/Readme",
                   href: "https://github.com/aws-samples/amazon-transcribe-post-call-analytics/",
                   external: true,
-                  externalIconAriaLabel:
-                    " (opens in new tab)"
+                  externalIconAriaLabel: " (opens in new tab)",
                 },
                 {
                   id: "feedback",
                   text: "Blog Post",
                   href: "https://amazon.com/post-call-analytics",
                   external: true,
-                  externalIconAriaLabel:
-                    " (opens in new tab)"
-                }
-              ]
+                  externalIconAriaLabel: " (opens in new tab)",
+                },
+              ],
             },
-            { id: "signout", text: "Sign out" }
-          ]
-        }
-
+            { id: "signout", text: "Sign out" },
+          ],
+        },
       ]}
     />
   );
@@ -170,22 +189,20 @@ function App() {
               stickyNotifications
               toolsHide
               navigationHide
-              breadcrumbs={
-                <Breadcrumb/>
+              breadcrumbs={<Breadcrumb />}
+              notifications={
+                alert && (
+                  <Alert
+                    variant={alert.variant}
+                    dismissible
+                    header={alert.heading}
+                    onClose={onDismiss}
+                  >
+                    {alert.text}
+                  </Alert>
+                )
               }
-              notifications={alert && (
-                <Alert
-                  variant={alert.variant}
-                  dismissible
-                  header={alert.heading}
-                  onClose={onDismiss}
-                >
-                  {alert.text}
-                </Alert>
-              )}
-              content={
-                <Component setAlert={setAlert} />
-              }
+              content={<Component setAlert={setAlert} />}
             />
           </Route>
         ))}

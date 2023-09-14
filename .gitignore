@@ -5,3 +5,5 @@ build
 /sample-data
 .vscode
 /pca-ui/src/witch/witch.zip
+.DS_Store
+*.DS_Store
